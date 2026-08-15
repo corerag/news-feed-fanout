@@ -109,7 +109,8 @@ Postgres 17, standalone Redis. 800 users, ~15 follows/user (12,000 edges),
 | 4 shards / 1 worker  / pool=10 | 24.4 / 99.6  | 66.8 / 407.2 | 0.265s | 3,890 | 45 |
 | 4 shards / 3 workers / pool=60 | 32.6 / 166.7 | 61.3 / 440.5 | 0.265s | 3,173 | 45 |
 | **LIVE** on Railway, 3 workers, pool_min=2/max=10 | 136.0 / 301.2 | 150.6 / 375.8 | 4.11s | 1,117 | 45 |
-| **LIVE** on Railway, 6 workers, pool_min=1/max=3 | 122.2 / 344.4 | 149.5 / 816.8 | **3.58s** | 1,003 | 45 |
+| **LIVE** on Railway, 6 workers, pool_min=1/max=3 | 122.2 / 344.4 | 149.5 / 816.8 | 3.58s | 1,003 | 45 |
+| **LIVE** on Railway, back to 3 workers, pool_min=2/max=10 (re-check) | 101.7 / 205.2 | 144.2 / 237.1 | 3.60s | 1,121 | 45 |
 
 Full JSON output for each run is in `load_test_results/`. The live run used a
 smaller seed (300 users vs 800) since it's a shared low-tier deployment, not
@@ -151,6 +152,20 @@ resource-constrained database rather than per-job network latency. Fixing
 workers — a different lever than the one this task started with, and only
 visible because the scale-up was actually tested against the live system
 instead of assumed to help.
+
+**Reverting back to 3 workers and re-running the exact same test did not
+reproduce the original 3-worker numbers.** Drain time came back at 3.60s —
+close to the 6-worker run (3.58s), not the original 3-worker run (4.11s) —
+and read p99 was the best of all three live runs (237.1ms vs 375.8ms and
+816.8ms), despite identical config to the very first live run. Config
+alone doesn't explain the spread; the honest read is run-to-run variance on
+shared, live infrastructure (Railway's network conditions, Postgres
+instance load from other tenants, etc. at the moment each test happened) —
+which the local loopback runs, deterministic to within a few ms, never
+exhibited. **A single live load test run is not a reliable benchmark** on
+shared hosting; treat the live numbers in this table as a range, not a
+precise measurement, and prefer the local numbers when comparing shard/worker
+configs against each other.
 
 ## Where the real system differed from the HTML simulation
 
