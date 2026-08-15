@@ -1,7 +1,8 @@
 # Deploying (Railway)
 
 Live instance: **https://api-production-ee8f.up.railway.app**
-(`X-Admin-Token: REDACTED-ROTATED-TOKEN` for `/admin/*`)
+(`/admin/*` requires an `X-Admin-Token` header — value lives in the `api`
+service's Railway variables, not published here or in git history)
 
 This was deployed with the Railway CLI, no dashboard clicking required.
 Fly.io was tried first but consistently rejected app creation with a billing
@@ -25,7 +26,7 @@ railway variables --service api --set "DATABASE_URL=\${{Postgres.DATABASE_URL}}"
   --set "N_SHARDS=4" --set "QUEUE_MAX_LEN=500" --set "QUEUE_RESUME_RATIO=0.6" \
   --set "CELEBRITY_THRESHOLD=1000" --set "RATE_LIMIT_CAPACITY=5" \
   --set "RATE_LIMIT_REFILL_PER_SEC=0.5" --set "POOL_MIN_SIZE=2" \
-  --set "POOL_MAX_SIZE=10" --set "ADMIN_TOKEN=REDACTED-ROTATED-TOKEN" --set "PORT=8000"
+  --set "POOL_MAX_SIZE=10" --set "ADMIN_TOKEN=<generate your own, don't reuse a published one>" --set "PORT=8000"
 
 railway variables --service worker --set "DATABASE_URL=\${{Postgres.DATABASE_URL}}" \
   --set "REDIS_URL=\${{Redis.REDIS_URL}}" --set "N_SHARDS=4" \
@@ -79,6 +80,15 @@ underlying cause (account-level verification beyond just a card, a stuck
 billing-status cache, something else), the CLI gave no path to diagnose it
 further. Railway's `add --database` / `add --service` / `up` flow worked on
 the first real attempt once logged in.
+
+## Admin token rotation
+
+An earlier commit published the literal `ADMIN_TOKEN` value in this file.
+It has been rotated on Railway (the old value now returns 403) and scrubbed
+from this doc going forward — but it's still visible in git history for
+this repo, so treat that specific string as permanently burned, not secret.
+If you fork or reuse this code, generate your own token; don't copy one
+that's ever been committed anywhere.
 
 ## Live vs local load test
 
