@@ -7,9 +7,13 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 COPY app ./app
 COPY worker ./worker
+COPY entrypoint.sh ./entrypoint.sh
+RUN chmod +x ./entrypoint.sh
 
 ENV PYTHONUNBUFFERED=1
 
 EXPOSE 8000
 
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+# SERVICE_ROLE=worker runs the fan-out worker loop instead of the API;
+# lets the same image serve both Railway services (see entrypoint.sh).
+CMD ["./entrypoint.sh"]

@@ -5,7 +5,11 @@ architecture from [`newsfeed-fanout-demo`](https://github.com/corerag/newsfeed-f
 (a single-file HTML/JS simulation of the *System Design Primer* news feed).
 This is the same architecture built as an actual FastAPI + Postgres + Redis
 system: real SQL tables, a real Redis queue, real worker processes, and a
-load test against the real thing. Nothing here is animated — every number
+load test against the real thing.
+
+**Live:** https://api-production-ee8f.up.railway.app (`/health`, `/metrics`,
+`/feed/{id}`, etc. — see [DEPLOY.md](DEPLOY.md) for how it was deployed and
+why Railway instead of Fly.io). Nothing here is animated — every number
 in the "Real load test results" section below came from hitting a running
 instance with concurrent HTTP requests and reading real Postgres/Redis
 state back out.
@@ -104,8 +108,28 @@ Postgres 17, standalone Redis. 800 users, ~15 follows/user (12,000 edges),
 | 8 shards / 3 workers / pool=10 | 28.4 / 135.1 | 62.2 / 414.1 | 0.263s | 3,843 | 45 |
 | 4 shards / 1 worker  / pool=10 | 24.4 / 99.6  | 66.8 / 407.2 | 0.265s | 3,890 | 45 |
 | 4 shards / 3 workers / pool=60 | 32.6 / 166.7 | 61.3 / 440.5 | 0.265s | 3,173 | 45 |
+| **LIVE** on Railway (railway.app, real internet + inter-service network) | 136.0 / 301.2 | 150.6 / 375.8 | **4.11s** | 1,117 | 45 |
 
-Full JSON output for each run is in `load_test_results/`.
+Full JSON output for each run is in `load_test_results/`. The live run used a
+smaller seed (300 users vs 800) since it's a shared low-tier deployment, not
+a benchmark rig — so drop counts aren't directly comparable to the local
+runs, but the latency and drain numbers are the real story:
+
+**Local loopback numbers are not a preview of live numbers.** Post p50 went
+from ~30ms to 136ms, feed p50 from ~64ms to 151ms, and — most notably —
+queue drain time went from ~0.26s to **4.11s**, a >15x jump, despite only
+675 jobs actually being written (vs ~1,300-1,400 locally) — working out to
+roughly 6-18ms per job depending on how you attribute it across the 3
+workers, versus sub-millisecond locally. Locally, worker-to-Postgres round
+trips are effectively free because everything is on `127.0.0.1`. On
+Railway, the worker, Redis, and Postgres are three separate services
+talking over the platform's internal network, and each `BLPOP` + `INSERT`
+cycle pays real (if small) per-job network latency, done sequentially with
+no batching. This is the exact mechanism the local-only testing in this
+repo could never have caught: at local scale, worker count essentially
+didn't matter (finding #1 above); on real infrastructure, per-job network
+latency is the real cost, and worker count should matter far more than the
+loopback tests suggested — a real deployment is the only way that shows up.
 
 Shard writes came out even in both configs (e.g. 8-shard run: 99, 102, 98,
 115, 97, 115, 100, 105 — `follower_id % N` really does spread load evenly
