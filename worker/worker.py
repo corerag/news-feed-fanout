@@ -14,6 +14,7 @@ from app.redis_client import get_client  # noqa: E402
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s worker[%(process)d] %(levelname)s %(message)s",
+    stream=sys.stdout,
 )
 log = logging.getLogger("worker")
 
