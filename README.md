@@ -108,7 +108,8 @@ Postgres 17, standalone Redis. 800 users, ~15 follows/user (12,000 edges),
 | 8 shards / 3 workers / pool=10 | 28.4 / 135.1 | 62.2 / 414.1 | 0.263s | 3,843 | 45 |
 | 4 shards / 1 worker  / pool=10 | 24.4 / 99.6  | 66.8 / 407.2 | 0.265s | 3,890 | 45 |
 | 4 shards / 3 workers / pool=60 | 32.6 / 166.7 | 61.3 / 440.5 | 0.265s | 3,173 | 45 |
-| **LIVE** on Railway (railway.app, real internet + inter-service network) | 136.0 / 301.2 | 150.6 / 375.8 | **4.11s** | 1,117 | 45 |
+| **LIVE** on Railway, 3 workers, pool_min=2/max=10 | 136.0 / 301.2 | 150.6 / 375.8 | 4.11s | 1,117 | 45 |
+| **LIVE** on Railway, 6 workers, pool_min=1/max=3 | 122.2 / 344.4 | 149.5 / 816.8 | **3.58s** | 1,003 | 45 |
 
 Full JSON output for each run is in `load_test_results/`. The live run used a
 smaller seed (300 users vs 800) since it's a shared low-tier deployment, not
@@ -134,6 +135,22 @@ loopback tests suggested — a real deployment is the only way that shows up.
 Shard writes came out even in both configs (e.g. 8-shard run: 99, 102, 98,
 115, 97, 115, 100, 105 — `follower_id % N` really does spread load evenly
 once you have enough distinct follower ids).
+
+**Doubling live workers (3 → 6) to compensate for the network-latency finding
+above got a real but unglamorous result.** Drain time improved 4.11s →
+3.58s — about 13%, nowhere near the ~2x you'd hope for from doubling worker
+count. Worse, `get_feed` p99 got noticeably *worse* (375.8ms → 816.8ms) at
+the same read concurrency. The most plausible read, without deeper Postgres
+instrumentation than this repo has: Railway's managed Postgres here is a
+single small shared instance, and 6 workers hammering it with `INSERT`s
+concurrently with 25 concurrent feed-reader connections creates more
+contention on that one instance than 3 workers did — so "scale out the
+workers" isn't a free win once the bottleneck has moved to a shared,
+resource-constrained database rather than per-job network latency. Fixing
+*that* would mean a bigger Postgres plan or read replicas, not more
+workers — a different lever than the one this task started with, and only
+visible because the scale-up was actually tested against the live system
+instead of assumed to help.
 
 ## Where the real system differed from the HTML simulation
 

@@ -71,6 +71,16 @@ single-instance deploy landed in a default region; scaling explicitly to
 `us-west=3` and zeroing the old region (`sfo=0`) is what actually produced 3
 running worker instances.
 
+Later scaled to 6 (`railway service scale --service worker us-west2=6`),
+along with shrinking each worker's own Postgres pool
+(`POOL_MIN_SIZE=1`/`POOL_MAX_SIZE=3` — a single worker loop only ever holds
+one connection at a time, so a bigger per-replica pool was pure waste). The
+result wasn't a clean win: drain time improved ~13% but feed-read p99 got
+noticeably worse, consistent with 6 workers adding real write contention on
+Railway's single shared Postgres instance. See the README's load test
+section for the numbers — worth reading before assuming "more workers" is
+the right lever on a given deployment.
+
 ## Why not Fly.io
 
 `fly apps create` failed repeatedly with `We need your payment information
