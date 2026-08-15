@@ -111,6 +111,7 @@ Postgres 17, standalone Redis. 800 users, ~15 follows/user (12,000 edges),
 | **LIVE** on Railway, 3 workers, pool_min=2/max=10 | 136.0 / 301.2 | 150.6 / 375.8 | 4.11s | 1,117 | 45 |
 | **LIVE** on Railway, 6 workers, pool_min=1/max=3 | 122.2 / 344.4 | 149.5 / 816.8 | 3.58s | 1,003 | 45 |
 | **LIVE** on Railway, back to 3 workers, pool_min=2/max=10 (re-check) | 101.7 / 205.2 | 144.2 / 237.1 | 3.60s | 1,121 | 45 |
+| **LIVE** on Railway, 6 workers again, pool_min=2/max=10 | 103.5 / 342.4 | 150.5 / 260.1 | **1.47s** | **120** | 45 |
 
 Full JSON output for each run is in `load_test_results/`. The live run used a
 smaller seed (300 users vs 800) since it's a shared low-tier deployment, not
@@ -166,6 +167,22 @@ exhibited. **A single live load test run is not a reliable benchmark** on
 shared hosting; treat the live numbers in this table as a range, not a
 precise measurement, and prefer the local numbers when comparing shard/worker
 configs against each other.
+
+**A fourth live run pushed the variance even further.** Scaling back to 6
+workers (this time leaving the pool at the reverted `2/10`, not the earlier
+`1/3`) produced the best drain time and lowest drop count of any live run by
+a wide margin: 1.47s and 120 dropped, versus 3.58s/1,003 dropped on the
+*first* 6-worker run with otherwise-similar load. The pool-size difference
+is very unlikely to be the real cause — each worker is a strictly
+sequential loop (`BLPOP`, one `INSERT`, repeat) that never holds more than
+one Postgres connection regardless of whether the cap is 3 or 10, so it has
+no mechanical reason to change drain throughput. Combined with the 3-worker
+re-check above, this is now three live runs where nominally-identical or
+near-identical configs produced meaningfully different results — reinforcing
+rather than resolving the "don't trust a single live run" caution, and a
+reminder that a config change (like a pool size tweak) that appears to
+correlate with a big result swing on shared infra isn't necessarily its
+cause without a controlled, repeated test to back it up.
 
 ## Where the real system differed from the HTML simulation
 
