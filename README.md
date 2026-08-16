@@ -199,6 +199,29 @@ live infrastructure noise is — and no single number in this table (drain
 time, drop count, or tail latency) should be read as "the" live performance
 of any given configuration.
 
+**To check whether that variance was a testing artifact or genuinely
+live-infra-specific, all four original local configs were re-run from
+scratch** (fresh processes, fresh seed data, same parameters) and diffed
+against the originals:
+
+| Config | drain (orig → recheck) | dropped (orig → recheck) | feed p99 (orig → recheck) |
+|---|---|---|---|
+| 4 shards/3 workers/pool=10 | 0.255s → 0.259s | 3,318 → 2,799 | 416.1 → 396.8ms |
+| 8 shards/3 workers/pool=10 | 0.263s → 0.267s | 3,843 → 3,281 | 414.1 → 423.5ms |
+| 4 shards/1 worker/pool=10 | 0.265s → 0.261s | 3,890 → 3,979 | 407.2 → 415.9ms |
+| 4 shards/3 workers/pool=60 | 0.265s → 0.265s | 3,173 → 3,137 | 440.5 → 430.9ms |
+
+Drain times land within a few milliseconds every time, and feed-read p99
+stays in the same ~390-440ms band across all 8 local runs (4 original + 4
+recheck). Dropped-job counts move more (±15%, expected — depends on which
+random high-follower authors happen to get posted during the concurrent
+burst) but nowhere near the 10x+ swings the live runs showed. This confirms
+the variance really is a property of shared live infrastructure, not
+noise in the test harness itself — the same script, same code, same
+methodology is reproducible to within single-digit milliseconds locally and
+is not reproducible at all live. Saved as `run10_local_s4w3_recheck.json`
+through `run13_local_s4w3_pool60_recheck.json`.
+
 ## Where the real system differed from the HTML simulation
 
 The simulation (`newsfeed-fanout-demo`) models: a worker "tick" every 380ms

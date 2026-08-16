@@ -1,0 +1,82 @@
+{
+  "label": "shards=4 workers=1 pool_max=10 (recheck)",
+  "base_url": "http://127.0.0.1:8000",
+  "config": {
+    "n_users": 800,
+    "avg_follows": 15,
+    "n_celebrities": 1,
+    "celebrity_followers": 500,
+    "num_posts": 150,
+    "post_concurrency": 20,
+    "num_reads": 1500,
+    "read_concurrency": 60
+  },
+  "phases": [
+    {
+      "phase": "post_regular (fan-out-on-write)",
+      "requests": 150,
+      "errors": 0,
+      "wall_seconds": 0.252,
+      "throughput_rps": 594.38,
+      "p50_ms": 24.64,
+      "p90_ms": 44.34,
+      "p99_ms": 137.0,
+      "max_ms": 237.19
+    },
+    {
+      "phase": "post_celebrity (fan-out-on-read)",
+      "requests": 50,
+      "errors": 45,
+      "wall_seconds": 0.086,
+      "throughput_rps": 58.01,
+      "p50_ms": 16.34,
+      "p90_ms": 21.17,
+      "p99_ms": 21.17,
+      "max_ms": 21.17
+    },
+    {
+      "phase": "get_feed (push+pull merge)",
+      "requests": 1500,
+      "errors": 0,
+      "wall_seconds": 2.446,
+      "throughput_rps": 613.18,
+      "p50_ms": 69.61,
+      "p90_ms": 205.39,
+      "p99_ms": 415.88,
+      "max_ms": 748.38
+    }
+  ],
+  "drain": {
+    "drain_seconds": 0.261,
+    "final_metrics": {
+      "queue_depth": 0,
+      "queue_max_len": 500,
+      "resume_threshold": 300,
+      "backpressure": false,
+      "dropped_total": 3979,
+      "rate_limited_total": 45,
+      "shard_writes": {
+        "0": 195,
+        "1": 191,
+        "2": 212,
+        "3": 195
+      },
+      "n_shards": 4
+    }
+  },
+  "final_metrics": {
+    "queue_depth": 0,
+    "queue_max_len": 500,
+    "resume_threshold": 300,
+    "backpressure": false,
+    "dropped_total": 3979,
+    "rate_limited_total": 45,
+    "shard_writes": {
+      "0": 195,
+      "1": 191,
+      "2": 212,
+      "3": 195
+    },
+    "n_shards": 4
+  }
+}
