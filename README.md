@@ -113,6 +113,7 @@ Postgres 17, standalone Redis. 800 users, ~15 follows/user (12,000 edges),
 | **LIVE** on Railway, back to 3 workers, pool_min=2/max=10 (re-check) | 101.7 / 205.2 | 144.2 / 237.1 | 3.60s | 1,121 | 45 |
 | **LIVE** on Railway, 6 workers again, pool_min=2/max=10 | 103.5 / 342.4 | 150.5 / 260.1 | **1.47s** | **120** | 45 |
 | **LIVE** on Railway, 3 workers again, pool_min=2/max=10 (post version pin) | 127.3 / **529.4** | 144.5 / 291.0 | 1.48s | 805 | 45 |
+| **LIVE** on Railway, 3 workers, 6th run, same config | **200.7** / 393.7 | 152.7 / 266.7 | 1.47s | 764 | 45 |
 
 Full JSON output for each run is in `load_test_results/`. The live run used a
 smaller seed (300 users vs 800) since it's a shared low-tier deployment, not
@@ -198,6 +199,20 @@ deployment are not the dominant source of run-to-run difference — shared,
 live infrastructure noise is — and no single number in this table (drain
 time, drop count, or tail latency) should be read as "the" live performance
 of any given configuration.
+
+**A sixth live run, same config again, broke the pattern in a new way.**
+Drain time (1.47s) again landed in the fast band, but `post_regular` p50
+(200.7ms) was now the slowest *median* — not just tail — of any live run,
+nearly double the next-worst. Combined with run five's tail-latency spike,
+that's now two consecutive same-config runs with a real, different kind of
+slowdown each time (one in the tail, one in the median), while drain time
+has been consistently fast for three runs straight. If anything this
+sharpens the earlier conclusion: it's not that "live is just generically
+noisier" in some uniform way — different runs are bottlenecked by different
+things at different moments, which is exactly what you'd expect from
+genuinely shared infrastructure (another tenant's noisy neighbor load,
+transient network conditions, a Postgres checkpoint) and exactly what
+neither the simulation nor a single load test run could ever surface.
 
 **To check whether that variance was a testing artifact or genuinely
 live-infra-specific, all four original local configs were re-run from
