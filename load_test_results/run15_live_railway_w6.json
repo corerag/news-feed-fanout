@@ -1,0 +1,82 @@
+{
+  "label": "LIVE railway.app: shards=4 workers=6 pool_min=2/max=10 (3rd 6-worker run)",
+  "base_url": "https://api-production-ee8f.up.railway.app",
+  "config": {
+    "n_users": 300,
+    "avg_follows": 12,
+    "n_celebrities": 1,
+    "celebrity_followers": 150,
+    "num_posts": 80,
+    "post_concurrency": 10,
+    "num_reads": 400,
+    "read_concurrency": 25
+  },
+  "phases": [
+    {
+      "phase": "post_regular (fan-out-on-write)",
+      "requests": 80,
+      "errors": 0,
+      "wall_seconds": 1.645,
+      "throughput_rps": 48.62,
+      "p50_ms": 204.16,
+      "p90_ms": 209.43,
+      "p99_ms": 227.24,
+      "max_ms": 227.24
+    },
+    {
+      "phase": "post_celebrity (fan-out-on-read)",
+      "requests": 50,
+      "errors": 45,
+      "wall_seconds": 0.781,
+      "throughput_rps": 6.4,
+      "p50_ms": 200.39,
+      "p90_ms": 200.94,
+      "p99_ms": 200.94,
+      "max_ms": 200.94
+    },
+    {
+      "phase": "get_feed (push+pull merge)",
+      "requests": 400,
+      "errors": 0,
+      "wall_seconds": 2.62,
+      "throughput_rps": 152.67,
+      "p50_ms": 149.72,
+      "p90_ms": 183.13,
+      "p99_ms": 406.6,
+      "max_ms": 459.1
+    }
+  ],
+  "drain": {
+    "drain_seconds": 0.428,
+    "final_metrics": {
+      "queue_depth": 0,
+      "queue_max_len": 500,
+      "resume_threshold": 300,
+      "backpressure": false,
+      "dropped_total": 150,
+      "rate_limited_total": 45,
+      "shard_writes": {
+        "0": 377,
+        "1": 398,
+        "2": 392,
+        "3": 397
+      },
+      "n_shards": 4
+    }
+  },
+  "final_metrics": {
+    "queue_depth": 0,
+    "queue_max_len": 500,
+    "resume_threshold": 300,
+    "backpressure": false,
+    "dropped_total": 150,
+    "rate_limited_total": 45,
+    "shard_writes": {
+      "0": 377,
+      "1": 398,
+      "2": 392,
+      "3": 397
+    },
+    "n_shards": 4
+  }
+}

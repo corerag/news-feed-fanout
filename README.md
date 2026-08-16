@@ -114,6 +114,7 @@ Postgres 17, standalone Redis. 800 users, ~15 follows/user (12,000 edges),
 | **LIVE** on Railway, 6 workers again, pool_min=2/max=10 | 103.5 / 342.4 | 150.5 / 260.1 | **1.47s** | **120** | 45 |
 | **LIVE** on Railway, 3 workers again, pool_min=2/max=10 (post version pin) | 127.3 / **529.4** | 144.5 / 291.0 | 1.48s | 805 | 45 |
 | **LIVE** on Railway, 3 workers, 6th run, same config | **200.7** / 393.7 | 152.7 / 266.7 | 1.47s | 764 | 45 |
+| **LIVE** on Railway, 6 workers, 3rd run, same config | 204.2 / 227.2 | 149.7 / 406.6 | **0.428s** | **150** | 45 |
 
 Full JSON output for each run is in `load_test_results/`. The live run used a
 smaller seed (300 users vs 800) since it's a shared low-tier deployment, not
@@ -213,6 +214,30 @@ things at different moments, which is exactly what you'd expect from
 genuinely shared infrastructure (another tenant's noisy neighbor load,
 transient network conditions, a Postgres checkpoint) and exactly what
 neither the simulation nor a single load test run could ever surface.
+
+**A third 6-worker run finally gives enough data to actually answer "does
+more workers help," instead of just cataloguing noise.** This run posted
+the fastest drain time of any live run yet (0.428s) and among the lowest
+drop counts (150). With 3 runs now at each worker count, the per-run range
+is still wide, but the *means* separate in the expected direction:
+
+| | 3 workers (n=4) | 6 workers (n=3) |
+|---|---|---|
+| drain time | mean 2.67s, range 1.47s–4.11s | mean 1.83s, range 0.43s–3.58s |
+| dropped jobs | mean 952, range 764–1,121 | mean 424, range 120–1,003 |
+
+Six workers averaged ~31% faster drain and ~55% fewer drops than three
+workers — a real, directionally consistent effect, and roughly in line
+with what the original network-latency finding predicted before any of
+this scaling was tested. But the ranges overlap substantially (the
+slowest 6-worker run was slower than the fastest 3-worker run), so **this
+conclusion needed three runs per config to see through the noise; any one
+of these six live runs in isolation would have supported a different, and
+possibly wrong, story.** That's the practical lesson from all this
+live-infra variance chasing: on shared hosting, "run it once and compare"
+is not a valid load-testing methodology, even though it's exactly what a
+single local run — deterministic to within a few ms — would have gotten
+away with.
 
 **To check whether that variance was a testing artifact or genuinely
 live-infra-specific, all four original local configs were re-run from
