@@ -81,6 +81,32 @@ Railway's single shared Postgres instance. See the README's load test
 section for the numbers — worth reading before assuming "more workers" is
 the right lever on a given deployment.
 
+## Log level quirks on Railway
+
+Railway tags every log line's severity by which stream the process wrote
+to, not by what the line actually says — anything on stderr becomes
+`level=error` in the log viewer, regardless of the real severity embedded
+in the message text.
+
+This bit our own `worker` service: `logging.basicConfig()` defaults to
+stderr, so every normal INFO line (job counts, backpressure clearing) was
+showing up tagged `error`. Fixed by pointing the handler at `stream=sys.stdout`
+in `worker/worker.py` — verified live, new lines now read `level=info`.
+
+The managed `Postgres` service has the identical symptom and it's *not*
+fixable from here: Postgres writes its `LOG:`-prefixed lines to stderr by
+design, so ~2/3 of its log lines show up as `level=error` on Railway even
+though inspecting the actual Postgres severity token in each message (`LOG:`
+/ `NOTICE:` / `WARNING:` / `ERROR:` / `FATAL:` / `PANIC:`) shows zero real
+errors — only routine `LOG` and `NOTICE` lines, including a `LOG: could not
+receive data from client: Connection reset by peer` any time a pooled
+connection or a load-test script disconnects non-gracefully, which is
+normal churn, not a fault. This is Railway's `postgres-ssl:18` template
+image, not code in this repo, so there's no equivalent one-line fix
+available — worth knowing before wiring up any alert on Railway's
+`@level:error` filter for the Postgres service, since it would fire
+constantly on totally healthy operation.
+
 ## Why not Fly.io
 
 `fly apps create` failed repeatedly with `We need your payment information
