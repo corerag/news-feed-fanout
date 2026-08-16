@@ -112,6 +112,7 @@ Postgres 17, standalone Redis. 800 users, ~15 follows/user (12,000 edges),
 | **LIVE** on Railway, 6 workers, pool_min=1/max=3 | 122.2 / 344.4 | 149.5 / 816.8 | 3.58s | 1,003 | 45 |
 | **LIVE** on Railway, back to 3 workers, pool_min=2/max=10 (re-check) | 101.7 / 205.2 | 144.2 / 237.1 | 3.60s | 1,121 | 45 |
 | **LIVE** on Railway, 6 workers again, pool_min=2/max=10 | 103.5 / 342.4 | 150.5 / 260.1 | **1.47s** | **120** | 45 |
+| **LIVE** on Railway, 3 workers again, pool_min=2/max=10 (post version pin) | 127.3 / **529.4** | 144.5 / 291.0 | 1.48s | 805 | 45 |
 
 Full JSON output for each run is in `load_test_results/`. The live run used a
 smaller seed (300 users vs 800) since it's a shared low-tier deployment, not
@@ -183,6 +184,20 @@ rather than resolving the "don't trust a single live run" caution, and a
 reminder that a config change (like a pool size tweak) that appears to
 correlate with a big result swing on shared infra isn't necessarily its
 cause without a controlled, repeated test to back it up.
+
+**A fifth live run, back at 3 workers with the exact same config as the
+first two 3-worker runs, landed in yet another different place.** Drain
+time (1.48s) matched the fast 6-worker runs rather than either prior
+3-worker run (4.11s, 3.60s), dropped-job count (805) fell squarely between
+every other run's extremes, and `post_regular` p99 (529.4ms) was the worst
+tail latency of any live run so far — plausibly one slow outlier request
+rather than a systemic change, but there's no way to distinguish that from
+a real regression with only one run. Five live runs in, at this point the
+pattern itself is the finding: shard/worker/pool config changes on this
+deployment are not the dominant source of run-to-run difference — shared,
+live infrastructure noise is — and no single number in this table (drain
+time, drop count, or tail latency) should be read as "the" live performance
+of any given configuration.
 
 ## Where the real system differed from the HTML simulation
 
